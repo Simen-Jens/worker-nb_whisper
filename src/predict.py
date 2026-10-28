@@ -5,6 +5,7 @@ repository, with some modifications to make it work with the RP platform.
 """
 
 import gc
+import os
 import threading
 from concurrent.futures import (
     ThreadPoolExecutor,
@@ -15,6 +16,10 @@ from runpod.serverless.utils import rp_cuda
 
 from faster_whisper import WhisperModel
 from faster_whisper.utils import format_timestamp
+from nb_models import is_nb_whisper, nb_whisper_path
+
+# Used when a request doesn't specify `model`.
+DEFAULT_MODEL = os.environ.get("MODEL_ID", "base")
 
 # Define available models (for validation)
 AVAILABLE_MODELS = {
@@ -46,7 +51,7 @@ class Predictor:
     def predict(
         self,
         audio,
-        model_name="base",
+        model_name=None,
         transcription="plain_text",
         translate=False,
         translation="plain_text",  # Added in a previous PR
@@ -69,7 +74,8 @@ class Predictor:
         """
         Run a single prediction on the model, loading/unloading models as needed.
         """
-        if model_name not in AVAILABLE_MODELS:
+        model_name = model_name or DEFAULT_MODEL
+        if model_name not in AVAILABLE_MODELS and not is_nb_whisper(model_name):
             raise ValueError(
                 f"Invalid model name: {model_name}. Available models are: {AVAILABLE_MODELS}"
             )
@@ -97,7 +103,7 @@ class Predictor:
                 print(f"Loading model: {model_name}...")
                 try:
                     loaded_model = WhisperModel(
-                        model_name,
+                        nb_whisper_path(model_name) if is_nb_whisper(model_name) else model_name,
                         device="cuda" if rp_cuda.is_available() else "cpu",
                         compute_type="float16" if rp_cuda.is_available() else "int8",
                     )

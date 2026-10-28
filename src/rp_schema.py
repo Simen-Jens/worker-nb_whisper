@@ -12,7 +12,7 @@ INPUT_VALIDATIONS = {
     'model': {
         'type': str,
         'required': False,
-        'default': 'base'
+        'default': None
     },
     'transcription': {
         'type': str,
